@@ -42,13 +42,17 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim10;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-char buffer[2];
+char inBuffer;
+char outBuffer[12];
+uint32_t ldr_val, mn = 2000, mx = 4095;
+uint32_t pdc, p, c;
+float temp;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,8 +60,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -96,17 +100,13 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
-  MX_TIM2_Init();
   MX_USART1_UART_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
-//  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 
-  HAL_UART_Receive_IT (&huart1, &buffer, 2);
-//  HAL_UART_Receive (&huart2, &buffer, strlen(buffer), 5000);
-//  HAL_UART_Transmit(&huart2, &buffer, strlen(buffer), 100);
+  HAL_UART_Receive_IT(&huart1, &inBuffer, sizeof inBuffer);
+  HAL_TIM_Base_Start_IT(&htim10);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
 
   /* USER CODE END 2 */
 
@@ -114,31 +114,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-//	  HAL_UART_Receive (&huart1, &buffer, strlen(buffer), HAL_MAX_DELAY);
-//	  HAL_UART_Transmit(&huart2, &buffer, strlen(buffer), HAL_MAX_DELAY);
-//		HAL_UART_Transmit(&huart2, "test\r\n", strlen("test\r\n"), HAL_MAX_DELAY);
-//	HAL_Delay(300);
-//	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_9);
-//	  HAL_Delay(300);
-//	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
-//	  HAL_Delay(300);
-//	  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_7);
-//	  HAL_Delay(300);
-
-
-//	  HAL_ADC_Start(&hadc1);
-//	  HAL_ADC_PollForConversion(&hadc1, 1);
-//	  AD_RES = HAL_ADC_GetValue(&hadc1);
-
-//	  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1)) {
-//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
-//		  sprintf(buffer, "BRUH\r\n");
-//	  }
-//	  else {
-//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
-//		  sprintf(buffer, "LIT\r\n");
-//	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -241,61 +216,33 @@ static void MX_ADC1_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
+  * @brief TIM10 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM2_Init(void)
+static void MX_TIM10_Init(void)
 {
 
-  /* USER CODE BEGIN TIM2_Init 0 */
+  /* USER CODE BEGIN TIM10_Init 0 */
 
-  /* USER CODE END TIM2_Init 0 */
+  /* USER CODE END TIM10_Init 0 */
 
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
+  /* USER CODE BEGIN TIM10_Init 1 */
 
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 8400-1;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 20000-1;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
   {
     Error_Handler();
   }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
+  /* USER CODE BEGIN TIM10_Init 2 */
 
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
+  /* USER CODE END TIM10_Init 2 */
 
 }
 
@@ -392,12 +339,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pins : LD2_Pin PA8 PA9 */
   GPIO_InitStruct.Pin = LD2_Pin|GPIO_PIN_8|GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -415,34 +356,59 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+int max(int a, int b) {
+	if(a > b) return a;
+	else return b;
+}
+
+int min(int a, int b) {
+	if(a < b) return a;
+	else return b;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 	int cmd;
-	sscanf(buffer, "%d", &cmd);
-	switch(cmd) {
-	case 10:
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
-		break;
-	case 11:
+	switch(inBuffer) {
+	case '1':
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
 		break;
-	case 20:
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+	case '2':
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
 		break;
-	case 21:
+	case '3':
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
 		break;
-	case 31:
+	case '4':
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+		break;
+	case '5':
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
 		break;
-	case 30:
+	case '6':
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
 		break;
 	}
 //	HAL_UART_Transmit(&huart2, &buffer, 2, 12);
 //	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
-    HAL_UART_Receive_IT(&huart1, &buffer, 2);
+    HAL_UART_Receive_IT(&huart1, &inBuffer, sizeof inBuffer);
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim == &htim10) {
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 1);
+		ldr_val = HAL_ADC_GetValue(&hadc1);
+		p = mx - ldr_val;
+		c = mx - mn;
+		temp = (float)p/c * 100.0;
+		pdc = min(temp, 100);
+//		sprintf(outBuffer, "%d\n", ldr_val);
+		sprintf(outBuffer, "%dx", pdc);
+		HAL_UART_Transmit(&huart1, outBuffer, sizeof outBuffer, 12);
+	}
 }
 /* USER CODE END 4 */
 
